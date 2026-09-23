@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SAP S/4 GO-LIVE RESCUE</title>
+<style>
+:root{
+  --sap-blue:#008CC8;
+  --navy:#102A43;
+  --bg-deep:#071A2B;
+  --bg-light:#EAF6FB;
+  --white:#FFFFFF;
+  --success:#2EAD73;
+  --warning:#F2A900;
+  --risk:#D64545;
+  --grey:#667085;
+  --grey-light:#F5F7FA;
+  --font: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  font-family:var(--font);
+  background:radial-gradient(1200px 800px at 20% -10%, #0d3a5c 0%, var(--bg-deep) 55%);
+  color:var(--white);
+  min-height:100vh;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.01em;}
+p{margin:0;}
+button{font-family:inherit;cursor:pointer;}
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible{
+  outline:3px solid var(--warning);
+  outline-offset:2px;
+}
+.screen{display:none;min-height:100vh;width:100%;}
+.screen.active{display:block;}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px;}
+.btn{
+  border:none;border-radius:14px;padding:16px 28px;font-size:1.05rem;font-weight:700;
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.btn:hover{transform:translateY(-2px);}
+.btn:active{transform:translateY(0);}
+.btn-primary{background:var(--sap-blue);color:#fff;box-shadow:0 8px 24px rgba(0,140,200,.35);}
+.btn-secondary{background:transparent;color:var(--white);border:2px solid rgba(255,255,255,.4);}
+.btn-ghost{background:rgba(255,255,255,.08);color:var(--white);border:1px solid rgba(255,255,255,.15);}
+.btn-sm{padding:10px 16px;font-size:.9rem;border-radius:10px;}
+.card{
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:18px;
+  padding:22px;
+  backdrop-filter: blur(6px);
+}
+.light-card{
+  background:var(--white);
+  color:var(--navy);
+  border-radius:18px;
+  padding:22px;
+  box-shadow:0 10px 30px rgba(7,26,43,.25);
+}
+.pill{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(0,140,200,.18);color:#8fd6f5;
+  border:1px solid rgba(0,140,200,.4);
+  border-radius:999px;padding:4px 12px;font-size:.8rem;font-weight:700;
+}
+.tooltip{
+  position:relative;border-bottom:1px dashed #8fd6f5;cursor:help;
+}
+.tooltip .tip{
+  visibility:hidden;opacity:0;position:absolute;left:0;bottom:130%;
+  background:var(--navy);color:#fff;padding:10px 12px;border-radius:10px;
+  font-size:.8rem;font-weight:400;width:260px;box-shadow:0 8px 20px rgba(0,0,0,.35);
+  transition:opacity .15s ease; z-index:30; line-height:1.4;
+}
+.tooltip:hover .tip, .tooltip:focus .tip{visibility:visible;opacity:1;}
+.metric-bar{height:8px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;}
+.metric-fill{height:100%;border-radius:99px;transition:width .5s ease;}
+.grid-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+.mission-progress{display:flex;gap:6px;}
+.mission-dot{flex:1;height:6px;border-radius:99px;background:rgba(255,255,255,.15);}
+.mission-dot.done{background:var(--success);}
+.mission-dot.current{background:var(--sap-blue);}
+.option-card{
+  text-align:left;width:100%;border-radius:16px;padding:18px 20px;
+  background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.14);color:#fff;
+  transition:.15s ease;
+}
+.option-card:hover{border-color:var(--sap-blue);background:rgba(0,140,200,.12);}
+.option-card.selected{border-color:var(--success);background:rgba(46,173,115,.15);}
+.option-card .opt-title{font-weight:700;font-size:1.02rem;margin-bottom:4px;}
+.option-card .opt-desc{font-size:.88rem;color:#c9d6e3;line-height:1.4;}
+.badge-ai{
+  display:inline-block;background:linear-gradient(90deg,#008CC8,#2EAD73);
+  color:#04202e;font-weight:800;font-size:.72rem;border-radius:999px;padding:2px 10px;margin-left:8px;
+}
+.fade-in{animation:fadeIn .35s ease both;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.pulse{animation:pulse 1.4s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+.scroll-x{overflow-x:auto;}
+::-webkit-scrollbar{height:8px;width:8px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:99px;}
+.top-bar{
+  position:sticky;top:0;z-index:20;
+  padding-top:env(safe-area-inset-top,0px);
+  background:linear-gradient(180deg, rgba(7,26,43,.96), rgba(7,26,43,.85));
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
+}
+.reduced-motion *{animation:none !important; transition:none !important;}
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(4,15,26,.72);display:flex;align-items:center;justify-content:center;
+  z-index:50;padding:20px;
+}
+.modal-box{max-width:560px;width:100%;max-height:85vh;overflow-y:auto;}
+.metric-icon{font-size:1.1rem;}
+.leaderboard-table{width:100%;border-collapse:collapse;}
+.leaderboard-table th,.leaderboard-table td{padding:8px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1);font-size:.88rem;}
+.leaderboard-table th{color:#8fd6f5;font-weight:700;}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   SAP S/4 GO-LIVE RESCUE
+   Single-file offline career-expo game.
+   Modules: DATA (content) -> STATE -> SCORING -> AI -> RENDER -> MAIN
+   ============================================================ */
+
+/* ---------------------------------------------------------
+   1. METRIC MODEL
+   Visible project metrics, 0-100, clamped.
+--------------------------------------------------------- */
+const METRIC_DEFS = [
+  {key:'goLive',   label:'Go-Live Readiness', icon:'🚦'},
+  {key:'trust',    label:'Client Trust',      icon:'🤝'},
+  {key:'data',     label:'Data Quality',      icon:'🗂️'},
+  {key:'integration', label:'Process Integration', icon:'🔗'},
+  {key:'morale',   label:'Team Morale',       icon:'💪'},
+  {key:'budget',   label:'Budget Remaining',  icon:'💰'},
+  {key:'time',     label:'Time Remaining',    icon:'⏳'},
+  {key:'ai',       label:'AI Reliability',    icon:'🤖'},
+];
+const START_METRICS = {goLive:45, trust:55, data:50, integration:50, morale:60, budget:65, time:70, ai:55};
+
+// 10 hidden consultant skill dimensions
+const SKILL_DEFS = [
+  'processThinking','businessInsight','financeData','integrationThinking',
+  'stakeholder','delivery','aiJudgment','fitStandard','risk','chaos'
+];
+
+/* ---------------------------------------------------------
+   2. GLOSSARY (tooltips)
+--------------------------------------------------------- */
+const GLOSSARY = {
+  'ERP':'Vállalatirányítási rendszer, amely egy helyen kezeli a pénzügy, beszerzés, értékesítés és termelés adatait.',
+  'SAP S/4HANA':'Az SAP legújabb, integrált ERP rendszere, amely valós időben köti össze az üzleti folyamatokat.',
+  'fit-to-standard':'Az a megközelítés, amikor a vállalat a saját folyamatait az SAP beépített, bevált megoldásaihoz igazítja — csak indokolt esetben térve el tőle.',
+  'cost center':'Költséghely: megmutatja, hogy a szervezeten belül hol merül fel egy adott költség.',
+  'master data':'Törzsadat: az alapvető, ritkán változó adatok (pl. vevő, termék, költséghely), amelyekre az egész rendszer épül.',
+  'go/no-go':'A steering committee döntése arról, hogy a rendszer elindulhat-e élesben, vagy inkább halasztani kell.',
+  'cutover':'Az átállás időszaka a régi rendszerről az újra — ekkor történik az éles adatfeltöltés és az utolsó tesztek.',
+  'hypercare':'Az élesítés utáni fokozott támogatási időszak, amikor a csapat gyorsan reagál a felmerülő problémákra.',
+  'Management P&L':'Vezetői eredménykimutatás: megmutatja a vállalat bevételeit és költségeit vezetői döntéstámogatás céljából.',
+  'SAP Business AI':'Az SAP mesterséges intelligencia funkciói, amelyek gyorsítják az elemzést és a javaslatok elkészítését — emberi ellenőrzéssel.',
+};
+function glossify(text){
+  let out = text;
+  Object.keys(GLOSSARY).sort((a,b)=>b.length-a.length).forEach(term=>{
+    const re = new RegExp('\\b'+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','g');
+    out = out.replace(re, m => `<span class="tooltip" tabindex="0">${m}<span class="tip">${GLOSSARY[term]}</span></span>`);
+  });
+  return out;
+}
+
+/* ---------------------------------------------------------
+   3. MISSIONS
+   Each option: label, desc, metrics{}, skills{}, consequence, flags[]
+--------------------------------------------------------- */
+const MISSIONS = [
+{
+  id:'m1', title:'1. küldetés: Minden igény kritikus',
+  tag:'Requirement workshop',
+  scenario:`A fit-to-standard workshop elindult. A pénzügy, beszerzés, logisztika és termelés is elküldte az igénylistáját — és mind azt állítják, az övék a legfontosabb.`,
+  artifact:{type:'message', from:'Termelési vezető', text:'„Az SAP-ban mindennek pontosan úgy kell működnie, mint a jelenlegi rendszerben és az Exceljeinkben.”'},
+  aiAvailable:true,
+  aiPrompt:'AI elemzést kérek a workshop-jegyzetekről',
+  aiOutput:{
+    text:'Az AI az igényeket 6 csoportba sorolta: SAP standard, folyamatváltozás, integrációs igény, riportigény, lehetséges egyedi fejlesztés, tisztázatlan igény.',
+    warning:'Figyelem: az AI két igényt összevonhatott, és nem biztos, hogy észrevette a beszerzés–termelés közti függőséget.',
+    confidence:72,
+  },
+  options:[
+    {label:'Megígérem, hogy minden folyamatot pontosan reprodukálunk', desc:'Gyors megnyugtatás — de ez pont az, amit egy ERP bevezetés el akar kerülni.',
+     metrics:{trust:6, goLive:-10, budget:-8, integration:-10}, skills:{fitStandard:-3, businessInsight:-2, chaos:-1}, flags:['customApprove'],
+     consequence:'A stakeholderek elégedettek — egészen addig, amíg rájönnek, hogy ez 40 egyedi fejlesztést jelent.'},
+    {label:'Azonnal elutasítok minden nem-standard igényt', desc:'Tiszta, gyors — de senki nem érzi, hogy meghallgatták.',
+     metrics:{trust:-12, goLive:4, integration:6, morale:-4}, skills:{fitStandard:3, stakeholder:-4}, flags:[],
+     consequence:'A csapat gyors döntést hoz, de a termelési vezető ezután minden emailt CC-be tesz a projektigazgatónak.'},
+    {label:'Az igényeket üzleti folyamatok szerint rendszerezem, és SAP standardhoz mérem', desc:'Strukturált, időigényesebb, de megalapozott döntést ad.',
+     metrics:{trust:5, goLive:8, integration:8, time:-6, morale:3}, skills:{processThinking:4, businessInsight:3, stakeholder:2}, flags:[],
+     consequence:'A workshop végére mindenki látja a saját igényét a nagyobb képben — és néhány „egyedi” igényről kiderül, hogy simán standard.'},
+    {label:'Az AI-t bevonom a csoportosításba, majd a stakeholderekkel validálom az eredményt', desc:'Gyorsítja a feldolgozást, de a validálás nem elhagyható.',
+     metrics:{trust:7, goLive:9, integration:7, time:-2, ai:6}, skills:{aiJudgment:4, processThinking:3, stakeholder:2}, flags:['aiValidated'],
+     needsAI:true,
+     consequence:'Az AI gyorsan csoportosít, a csapat pedig időt nyer arra, hogy a valóban kritikus pontokra fókuszáljon.'},
+  ],
+  lesson:'Egy SAP S/4HANA projektben nem az a cél, hogy minden régi folyamatot lemásoljunk — hanem hogy megértsük a mögöttes üzleti igényt.'
+},
+{
+  id:'m2', title:'2. küldetés: Fejlesszünk mindent egyedileg?',
+  tag:'Fit-to-standard dilemma',
+  scenario:`A Chaos Industries több egyedi fejlesztést kér: külön jóváhagyási folyamatot, egyedi beszerzési riportot, Excel-feltöltést és egy régi rendszert másoló képernyőt. Indoklás: „Mi mindig így csináltuk.”`,
+  artifact:{type:'alert', from:'Projektvezető', text:'Minden egyedi fejlesztés növeli a költséget, az átfutási időt és a jövőbeli upgrade-ek kockázatát.'},
+  aiAvailable:true,
+  aiPrompt:'AI-tól kérek standardizációs javaslatot',
+  aiOutput:{
+    text:'Az AI szerint a 4 igényből 3 lefedhető SAP standard funkcióval kisebb folyamat-igazítással, 1 esetben indokolt lehet az egyedi megoldás (szabályozói ok).',
+    warning:'Az AI nem ismeri a helyi jogszabályi részleteket — ezt érdemes folyamatszakértővel megerősíteni.',
+    confidence:78,
+  },
+  options:[
+    {label:'Minden fejlesztést jóváhagyok, hogy mindenki elégedett legyen', desc:'Rövid távú boldogság — hosszú távú karbantartási teher.',
+     metrics:{trust:8, budget:-14, time:-8, goLive:-10, integration:-6}, skills:{fitStandard:-4, delivery:-2}, flags:['customApprove'],
+     consequence:'A csapat ünnepel — a tesztelési lista viszont hirtelen duplájára nő.'},
+    {label:'Minden fejlesztést elutasítok, kényszerítem a standardot', desc:'Tisztán tartja a rendszert, de a bizalom sérülhet.',
+     metrics:{trust:-10, integration:8, goLive:5, morale:-3}, skills:{fitStandard:4, stakeholder:-3}, flags:[],
+     consequence:'A rendszer szép és tiszta marad — a beszerzési csapat viszont úgy érzi, senki sem hallgatja meg őket.'},
+    {label:'Fit-to-standard demót tartok, hogy megmutassam, mire képes az SAP standard', desc:'Időbe kerül, de valódi meggyőzést hoz.',
+     metrics:{trust:9, integration:6, time:-5, goLive:5, morale:2}, skills:{businessInsight:3, stakeholder:3, processThinking:2}, flags:[],
+     consequence:'Két igényről kiderül, hogy a standard funkció valójában jobb, mint a jelenlegi Excel-megoldás.'},
+    {label:'Csak mérhető üzleti értékkel vagy jogszabályi kényszerrel indokolt fejlesztést engedélyezek', desc:'Kiegyensúlyozott, fegyelmezett megközelítés.',
+     metrics:{trust:4, integration:9, budget:-3, goLive:8}, skills:{fitStandard:5, businessInsight:3, risk:2}, flags:[],
+     consequence:'Egy fejlesztés megmarad — jogi okból —, a többi helyett standard megoldás születik.'},
+  ],
+  lesson:'A fit-to-standard nem azt jelenti, hogy mindent standardra kényszerítünk. Azt jelenti, hogy tudjuk, hol elég a standard, és hol ér valódi üzleti értéket egy indokolt eltérés.'
+},
+{
+  id:'m3', title:'3. küldetés: Miért nem egyezik a riport?',
+  tag:'Finance & master data crisis',
+  scenario:`A CFO szerint a Management P&L nem egyezik a pénzügyi adatokkal. A pénzügy a beszerzést hibáztatja, a beszerzés a controllingot, a controlling a törzsadatokat. A rendszerben eltérő cost center hozzárendelések, hiányzó leképezések és duplikált törzsadatok látszanak.`,
+  artifact:{type:'alert', from:'Rendszerriasztás', text:'Több cost center duplikáció és eltérő szervezeti struktúra észlelve a pénzügyi és controlling modulok között.'},
+  aiAvailable:true,
+  aiPrompt:'AI-tól kérek gyanús törzsadat-mintázatokat',
+  aiOutput:{
+    text:'Az AI 5 valószínű duplikált cost centert és 3 gyanús leképezést azonosított a historikus adatok alapján.',
+    warning:'Az egyik javaslat hiányos historikus adaton alapul — érdemes forrásadatból ellenőrizni, mielőtt bárkit hibáztatunk.',
+    confidence:66,
+  },
+  options:[
+    {label:'Manuálisan kijavítom a végleges riportot', desc:'A CFO azonnal jó számokat lát — a gyökérok viszont megmarad.',
+     metrics:{trust:5, data:-8, goLive:-4}, skills:{financeData:-3, risk:-2}, flags:['slideware'],
+     consequence:'A prezentáció szép, de jövő hónapban ugyanaz a hiba visszatér.'},
+    {label:'Megkérem az AI-t, hogy írjon egy meggyőző CFO-magyarázatot', desc:'Gyors — de nem old meg semmit, csak jól hangzik.',
+     metrics:{trust:3, data:-6, ai:-6}, skills:{aiJudgment:-4, financeData:-2}, flags:['aiBlind','slideware'],
+     consequence:'A magyarázat profin hangzik. A számok viszont továbbra sem egyeznek.'},
+    {label:'Végigkövetem az adatfolyamot a forrás-tranzakciótól a riportig', desc:'Alapos, de időigényes — a gyökérokhoz vezet.',
+     metrics:{data:12, integration:6, time:-6, trust:6}, skills:{financeData:5, processThinking:3, risk:2}, flags:[],
+     consequence:'Kiderül: két cost center véletlenül duplikálva lett a migráció során.'},
+    {label:'Közös pénzügy–controlling–adat egyeztető szessziót indítok, egyértelmű adatgazdával', desc:'Strukturált megoldás, tartós javítással.',
+     metrics:{data:14, integration:8, trust:8, time:-5, morale:3}, skills:{financeData:5, stakeholder:4, processThinking:2}, flags:[],
+     consequence:'A csapatok először beszélnek egymással a hibáról ahelyett, hogy egymásra mutogatnának — és találnak egy tartós javítást.'},
+  ],
+  lesson:'Egy integrált ERP rendszer annyira jó, amennyire a mögöttes törzsadat és üzleti logika konzisztens. Egy szépen kinéző riport mögött is lehet hibás adat.'
+},
+{
+  id:'m4', title:'4. küldetés: Élesítsünk vagy halasszunk?',
+  tag:'Go-live decision',
+  scenario:`Kevés idő maradt a go-live-ig. Több alacsony prioritású hiba, egy megoldatlan pénzügyi integrációs hiba, hiányos képzés egy üzletágban, és a célnál gyengébb adatmigrációs minőség jellemzi a projektet.`,
+  artifact:{type:'report', from:'Teszt csapat', text:'1 kritikus pénzügyi integrációs hiba nyitva. Migráció minőség: cél alatt. Menedzsment nyomás: ne csússzon a dátum.'},
+  aiAvailable:true,
+  aiPrompt:'AI-tól kérek go/no-go kockázatelemzést',
+  aiOutput:{
+    text:'Az AI a hibamintázatok alapján közepes go-live kockázatot jelez, és 3 mitigációs lépést javasol hypercare támogatással.',
+    warning:'Az AI nem vette figyelembe teljesen a pénzügy–beszerzés közti függőséget — érdemes szakértővel átnézni.',
+    confidence:70,
+  },
+  options:[
+    {label:'Javaslom a go-live-ot a kockázatok ellenére', desc:'Tartja a határidőt — de a nyitott pénzügyi hiba éles kockázatot jelent.',
+     metrics:{goLive:10, time:5, trust:-6, data:-4}, skills:{delivery:3, risk:-4}, flags:['heroic'],
+     consequence:'A rendszer elindul. A hypercare csapat rögtön az első napon szembesül a pénzügyi hibával.'},
+    {label:'Azonnal halasztást javaslok, üzleti hatás elemzése nélkül', desc:'Biztonságos — de megalapozatlan döntés rossz benyomást kelt.',
+     metrics:{goLive:-8, time:-10, budget:-8, trust:-4}, skills:{risk:2, businessInsight:-3}, flags:[],
+     consequence:'A vezetőség megkérdezi: pontosan miért is halasztunk? Nincs meggyőző válasz.'},
+    {label:'Szétválasztom a kritikus és nem kritikus hibákat, világos go/no-go kritériumokkal', desc:'Strukturált döntéshozatal, tiszta indoklással.',
+     metrics:{goLive:9, trust:7, risk_metric:0, data:3}, skills:{risk:4, delivery:3, processThinking:2}, flags:[],
+     consequence:'A steering committee végre lát egy világos, tényalapú döntési keretet — nem csak érzéseket.'},
+    {label:'Mitigációs terveket és felelősöket rendelek minden nyitott kockázathoz', desc:'Nem tünteti el a kockázatot, de kezelhetővé teszi.',
+     metrics:{goLive:12, trust:9, morale:4, time:-3}, skills:{risk:5, stakeholder:3, delivery:2}, flags:[],
+     consequence:'A kritikus pénzügyi hiba felelőse egyértelmű, a hypercare terv készen áll.'},
+  ],
+  lesson:'A go-live döntés az üzleti felkészültséget, a rendszer felkészültségét, az adatminőséget, a képzést és a kockázattűrést egyszerre mérlegeli — nincs univerzálisan tökéletes válasz.'
+},
+{
+  id:'m5', title:'5. küldetés: Bízhatsz az AI javaslatában?',
+  tag:'SAP Business AI under pressure',
+  scenario:`A végső steering committee előtt a projekt szimulált AI asszisztense magabiztos ajánlást ad: „A rendszer készen áll az indulásra. A fennmaradó problémák üzletileg nem kritikusak.” Egy stakeholder viszont még nem erősítette meg a felkészültséget, és az AI nem vette teljesen figyelembe a pénzügy–beszerzés közti függőséget.`,
+  artifact:{type:'ai', from:'SAP Business AI asszisztens', text:'„A rendszer készen áll az indulásra. A fennmaradó problémák üzletileg nem kritikusak.”'},
+  aiAvailable:true,
+  aiPrompt:'Megkérem az AI-t: mutassa meg a feltételezéseit és forrásait',
+  aiOutput:{
+    text:'Az AI feltárja: az ajánlás hiányos workshop-jegyzeteken és részben elavult migrációs statisztikán alapul. A megbízhatósági szint közepes.',
+    warning:'Egy kulcs-stakeholder visszaigazolása még hiányzik a forrásadatokból.',
+    confidence:58,
+  },
+  options:[
+    {label:'Változtatás nélkül bemásolom a steering committee prezentációba', desc:'Gyors — de vakon bízik egy nem validált forrásban.',
+     metrics:{goLive:6, ai:-14, trust:-8, data:-4}, skills:{aiJudgment:-5, risk:-3}, flags:['aiBlind'],
+     consequence:'A prezentáció simán megy — amíg valaki fel nem teszi a kérdést, amire nincs válasz.'},
+    {label:'Elutasítom az AI-t, mert az szerintem sosem használható SAP projektben', desc:'Biztonságos, de kihagyja a valódi hatékonyságnövelést.',
+     metrics:{ai:-6, time:-6, goLive:-2}, skills:{aiJudgment:-2, chaos:1}, flags:[],
+     consequence:'Minden elemzést kézzel csinálunk újra — lassan, de biztonságosan.'},
+    {label:'Megkérem az AI-t, mutassa meg a feltételezéseit, forrásait és bizonytalanságát', desc:'Átláthatóvá teszi az ajánlást — ez az alap egy jó validáláshoz.',
+     metrics:{ai:10, goLive:4, trust:3}, skills:{aiJudgment:5, risk:2}, flags:[],
+     needsAI:true,
+     consequence:'Kiderül, mire épül az ajánlás — és mit kell még ellenőrizni, mielőtt bárki aláírja.'},
+    {label:'Az AI-javaslatot validálom a felelős stakeholderekkel, majd szakmai döntést hozok', desc:'A felelősség az emberé marad — az AI csak gyorsítja a munkát.',
+     metrics:{ai:12, trust:10, goLive:9, morale:3}, skills:{aiJudgment:6, stakeholder:4, risk:3}, flags:['aiValidated'],
+     consequence:'A steering committee egy megalapozott, emberi jóváhagyással ellátott ajánlást kap — pont ez a különbség egy jó SAP-tanácsadónál.'},
+  ],
+  lesson:'Az AI segít az SAP-tanácsadónak feldolgozni az információt, mintázatokat találni és alternatívákat készíteni — de a felelős üzleti döntést, a validálást és a stakeholder-egyeztetést nem veheti át.'
+},
+];
+
+/* ---------------------------------------------------------
+   4. ARCHETYPES
+--------------------------------------------------------- */
+const ARCHETYPES = {
+  processThinking:{name:'Az SAP-folyamatok suttogója', tagline:'Te még abból is end-to-end folyamatot rajzolsz, ahogy valaki jóváhagy egy kávérendelést.', profile:'Erős az igényfelmérésben, a fit-to-standard gondolkodásban és a folyamattervezésben.'},
+  businessInsight:{name:'Az SAP-transzformáció karmestere', tagline:'Te nem csak rendszert vezetsz be. Valahogy még a steering committee is ugyanabba az irányba indul el.', profile:'Erős az üzleti célok, stakeholderek, folyamatok és programdöntések összehangolásában.'},
+  financeData:{name:'Az SAP Finance hőse', tagline:'Addig nem nyugszol, amíg a Management P&L és a főkönyv ugyanazt a történetet meséli.', profile:'Erős a pénzügyben, controllingban, riportálásban és üzleti logikában.'},
+  integrationThinking:{name:'Az SAP Supply Chain parancsnoka', tagline:'Te már akkor látod a számlaproblémát, amikor mások még csak a megrendelést keresik.', profile:'Erős a beszerzésben, logisztikában és a folyamatok közti függőségek kezelésében.'},
+  stakeholder:{name:'Az SAP workshop-alkimista', tagline:'Három ellentmondó stakeholderből, két Excelből és egy cetlifalból működési modellt készítesz.', profile:'Ellentmondó stakeholder-inputból strukturált döntéseket készít.'},
+  delivery:{name:'Az SAP go-live tűzoltója', tagline:'A projektterv már háromszor kigyulladt, de nálad van az egyetlen működő poroltó.', profile:'Nyomás alatt is képes elválasztani a kritikus problémákat a háttérzajtól.'},
+  aiJudgment:{name:'Az SAP Business AI úttörője', tagline:'Az AI a copilótád, nem a projektvezetőd.', profile:'Hatékonyan használja az AI-t, miközben ellenőrzi a forrásokat, feltételezéseket és kockázatokat.'},
+  fitStandard:{name:'Az SAP-standardizáció diplomatája', tagline:'Úgy mondasz nemet a tizenhetedik custom fejlesztésre, hogy az ügyfél még meg is köszöni.', profile:'Egyensúlyt teremt az SAP standard folyamatok és az indokolt üzleti igények között.'},
+  risk:{name:'Az SAP-adatdetektív', tagline:'Egy hibás cost center nálad nem adatprobléma, hanem személyes ügy.', profile:'Erős a törzsadatban, migrációban, egyeztetésben és gyökérok-elemzésben.'},
+  chaos:{name:'Az SAP-adatdetektív', tagline:'Egy hibás cost center nálad nem adatprobléma, hanem személyes ügy.', profile:'Erős a törzsadatban, migrációban, egyeztetésben és gyökérok-elemzésben.'},
+};
+const EXTREME_PROFILES = [
+  {flag:'customApprove', min:2, name:'A customizing cowboy', tagline:'Gyors vagy, bátor vagy, és valaki hamarosan rendkívüli governance meetinget szervez miattad.', profile:'Túl gyorsan hagy jóvá egyedi megoldásokat.'},
+  {flag:'slideware', min:1, name:'A slideware stratéga', tagline:'A steering committee imád, az SAP pedig továbbra sem könyvel.', profile:'Meggyőző prezentációkat készít, de elkerüli a gyökérokokat.'},
+  {flag:'aiBlind', min:2, name:'Az AI-autopilóta tanácsadó', tagline:'A prezentáció tökéletes volt. Kár, hogy az AI egy tavalyi tesztjelentésből dolgozott.', profile:'Validálás nélkül bízik az AI ajánlásaiban.'},
+];
+
+/* ---------------------------------------------------------
+   5. CAREER AREAS
+--------------------------------------------------------- */
+const CAREERS = {
+  processThinking:{name:'SAP Process és Transformation Consulting', text:'Az üzleti folyamatok újratervezésében és az SAP standardhoz illesztésében segítesz vállalatoknak.', problem:'Hogyan illesszük az üzleti folyamatot az SAP standard megoldásaihoz feleslegesen egyedi fejlesztés nélkül.', strength:'Strukturált gondolkodás és folyamatszemlélet.', task:'Fit-to-standard workshop levezetése egy új üzletág bevezetésekor.', fun:'…szereted rendszerbe rendezni a káoszt, és élvezed, ha egy folyamat végre logikusan összeáll.'},
+  businessInsight:{name:'SAP Project és Program Management', text:'Programokat és projekteket vezetsz, ahol az üzleti célok, a csapat és az ütemterv egyszerre kell, hogy működjön.', problem:'Hogyan tartsuk egyben egy komplex transzformációs projektet több stakeholder és határidő között.', strength:'Átfogó látás és döntéshozatali képesség.', task:'Steering committee előkészítése és a projekt kockázatainak kommunikálása.', fun:'…szereted a nagy képet látni, és jól érzed magad, ha sok szálat kell összefogni.'},
+  financeData:{name:'SAP Finance és Controlling', text:'A pénzügyi és controlling folyamatok SAP-beli kialakításáért és riportálásáért felelsz.', problem:'Hogyan biztosítsuk, hogy a vezetői riportok pontosak és megbízhatóak legyenek.', strength:'Analitikus, pénzügyi gondolkodás.', task:'Management P&L és főkönyvi adatok egyeztetése egy új üzleti egységnél.', fun:'…szereted, ha a számok stimmelnek, és nem nyugszol, amíg meg nem találod, miért nem azok.'},
+  integrationThinking:{name:'SAP Procurement és Supply Chain', text:'A beszerzési és logisztikai folyamatok integrációjáért felelsz az SAP-ban.', problem:'Hogyan kövessük nyomon a kötelezettségvállalásokat a rendeléstől a számláig.', strength:'Rendszerszintű, összefüggéseket kereső gondolkodás.', task:'Beszerzés–pénzügy integrációs teszt levezetése cutover előtt.', fun:'…szereted látni, hogyan függ össze minden mindennel egy ellátási láncban.'},
+  stakeholder:{name:'SAP Change Management és Training', text:'Az embereket segíted felkészülni és elfogadni az új SAP rendszert.', problem:'Hogyan érjük el, hogy a felhasználók magabiztosan és szívesen használják az új rendszert.', strength:'Empátia és kommunikációs készség.', task:'Képzési terv és kommunikációs kampány kialakítása go-live előtt.', fun:'…szereted, ha emberekkel dolgozhatsz, és élvezed, amikor valakinek végre „bekattan” egy folyamat.'},
+  delivery:{name:'SAP Testing és Quality Assurance', text:'A rendszer minőségéért és a go-live megbízhatóságáért felelsz.', problem:'Hogyan különböztessük meg a kritikus hibát a háttérzajtól időszűkében.', strength:'Nyomás alatti fókusz és prioritizálás.', task:'Go/no-go kritériumok kidolgozása és a hibalista rendszerezése.', fun:'…jól teljesítesz nyomás alatt, és élvezed a végső hajrát a célvonal előtt.'},
+  aiJudgment:{name:'SAP Business AI és Automation', text:'Az AI-alapú eszközök felelős, hatékony bevezetéséért felelsz az SAP projektekben.', problem:'Hogyan gyorsítsuk fel a munkát AI-jal anélkül, hogy vakon bíznánk benne.', strength:'Kritikus gondolkodás és technológiai nyitottság.', task:'AI-alapú elemzőeszköz validálási folyamatának kialakítása.', fun:'…izgat a technológia, de nem hiszel el mindent, amit egy algoritmus mond.'},
+  fitStandard:{name:'SAP Master Data és Migráció', text:'A törzsadatok minőségéért és a rendszerek közti migrációért felelsz.', problem:'Hogyan biztosítsuk, hogy a migrált adatok konzisztensek és megbízhatóak legyenek.', strength:'Precizitás és gyökérok-keresés.', task:'Duplikált cost centerek felderítése és javítása migráció előtt.', fun:'…szereted a részleteket, és nem nyugszol, amíg meg nem találod a hiba forrását.'},
+  risk:{name:'SAP Master Data és Migráció', text:'A törzsadatok minőségéért és a rendszerek közti migrációért felelsz.', problem:'Hogyan biztosítsuk, hogy a migrált adatok konzisztensek és megbízhatóak legyenek.', strength:'Precizitás és gyökérok-keresés.', task:'Duplikált cost centerek felderítése és javítása migráció előtt.', fun:'…szereted a részleteket, és nem nyugszol, amíg meg nem találod a hiba forrását.'},
+  chaos:{name:'SAP Manufacturing és Operations', text:'A termelési és operatív folyamatok SAP-beli kialakításáért felelsz.', problem:'Hogyan tartsuk kordában a helyi munkafolyamatokat egy integrált rendszerben.', strength:'Nyugodt fejjel kezeled a kaotikus helyzeteket.', task:'Helyi Excel-alapú munkafolyamat kiváltása SAP standard funkcióval.', fun:'…nem esel pánikba, ha minden egyszerre ég — inkább rendszerezni kezdesz.'},
+};
+
+/* ---------------------------------------------------------
+   6. STATE
+--------------------------------------------------------- */
+const LS_KEY = 'sap_golive_rescue_session_v1';
+const LS_BOARD = 'sap_golive_rescue_leaderboard_v1';
+
+function freshState(){
+  return {
+    screen:'landing',
+    nickname:'',
+    missionIndex:0,
+    metrics:{...START_METRICS},
+    skills:Object.fromEntries(SKILL_DEFS.map(k=>[k,0])),
+    flags:{},
+    decisions:[],
+    aiUsed:{},
+    startTime:Date.now(),
+    completed:false,
+    result:null,
+  };
+}
+let S = loadState() || freshState();
+
+function saveState(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function clearState(){ try{ localStorage.removeItem(LS_KEY); }catch(e){} }
+
+/* ---------------------------------------------------------
+   7. SCORING
+--------------------------------------------------------- */
+function clampMetrics(){
+  METRIC_DEFS.forEach(m=>{
+    S.metrics[m.key] = Math.max(0, Math.min(100, Math.round(S.metrics[m.key])));
+  });
+}
+function applyOption(mission, opt){
+  Object.entries(opt.metrics||{}).forEach(([k,v])=>{
+    if(S.metrics[k]!==undefined) S.metrics[k]+=v;
+  });
+  Object.entries(opt.skills||{}).forEach(([k,v])=>{
+    S.skills[k]=(S.skills[k]||0)+v;
+  });
+  (opt.flags||[]).forEach(f=>{ S.flags[f]=(S.flags[f]||0)+1; });
+  if(opt.needsAI) S.aiUsed[mission.id]=true;
+  clampMetrics();
+  S.decisions.push({mission:mission.id, option:opt.label});
+}
+
+function computeTotalScore(){
+  // 60% from visible metrics average, 40% from hidden skills (normalized)
+  const metricAvg = METRIC_DEFS.reduce((s,m)=>s+S.metrics[m.key],0)/METRIC_DEFS.length; // 0-100
+  const skillVals = SKILL_DEFS.map(k=>S.skills[k]);
+  const skillSum = skillVals.reduce((a,b)=>a+b,0);
+  // normalize skillSum roughly into 0-100 range (max plausible ~ 30)
+  const skillScore = Math.max(0, Math.min(100, 50 + skillSum*2.2));
+  const total = metricAvg*0.6 + skillScore*0.4;
+  return Math.round(Math.max(0, Math.min(100, total)) * 10); // 0-1000
+}
+
+function topSkills(){
+  const entries = SKILL_DEFS.map(k=>[k, S.skills[k]||0]);
+  entries.sort((a,b)=>b[1]-a[1]);
+  return entries;
+}
+
+function determineArchetype(){
+  // check extreme profiles first
+  for(const ex of EXTREME_PROFILES){
+    if((S.flags[ex.flag]||0) >= ex.min){
+      return {primary:ex, secondaryKey:topSkills()[0][0], extreme:true};
+    }
+  }
+  const sorted = topSkills();
+  const primaryKey = sorted[0][0];
+  const secondaryKey = sorted[1][0];
+  return {primary:ARCHETYPES[primaryKey], secondaryKey, extreme:false, primaryKey};
+}
+
+function determineOutcome(){
+  const m = S.metrics;
+  const score = computeTotalScore();
+  const postponed = S.decisions.some(d=>d.option.includes('halasztást javaslok') || d.option.includes('halasztás'));
+  if(score>=780 && m.goLive>=65 && m.trust>=55){
+    return {key:'green', title:'Sikeres SAP S/4HANA go-live', desc:'A rendszer kontrollált kockázatokkal, összehangolt stakeholderekkel és világos hypercare tervvel indul el.', color:'var(--success)'};
+  }
+  if(postponed && m.trust>=45){
+    return {key:'postpone', title:'Felelős halasztás', desc:'Megakadályoztad egy kockázatos indulást, és hiteles helyreállítási tervet készítettél. Ez nem kudarc — ez felelős döntés.', color:'var(--sap-blue)'};
+  }
+  if(score>=600){
+    return {key:'conditional', title:'Feltételes go-live', desc:'A projekt folytatódhat, de csak meghatározott mitigációs intézkedésekkel, felelősökkel és fokozott támogatással.', color:'var(--warning)'};
+  }
+  if(m.goLive>=45 && (m.data<45 || m.integration<45)){
+    return {key:'chaotic', title:'Élesítés kontrollált káoszban', desc:'A rendszer elindul, de a hypercare csapatnak komoly mennyiségű kávéra lesz szüksége.', color:'var(--warning)'};
+  }
+  return {key:'disaster', title:'Rendkívüli steering committee összehívva', desc:'A rövid távú látszat mellett döntöttél, miközben komoly SAP, folyamat- vagy adatkockázatok maradtak megoldatlanul.', color:'var(--risk)'};
+}
+
+function finalizeResult(){
+  const arche = determineArchetype();
+  const outcome = determineOutcome();
+  const careerKey = arche.primaryKey || topSkills()[0][0];
+  const career = CAREERS[careerKey];
+  const score = computeTotalScore();
+  const strengths = topSkills().slice(0,3).map(([k])=>skillLabel(k));
+  const devArea = topSkills()[topSkills().length-1];
+  const timeMs = Date.now()-S.startTime;
+  S.result = {
+    score, outcome, archetype:arche.primary, secondary: arche.extreme? null : ARCHETYPES[arche.secondaryKey],
+    career, strengths, devArea: skillLabel(devArea[0]), timeMs,
+    aiStyle: computeAiStyle(),
+  };
+  S.completed = true;
+  saveToLeaderboard();
+}
+
+function skillLabel(k){
+  const map = {processThinking:'Folyamatgondolkodás', businessInsight:'Üzleti rálátás', financeData:'Pénzügy és adatlogika',
+    integrationThinking:'Integrációs gondolkodás', stakeholder:'Stakeholder menedzsment', delivery:'Teljesítés nyomás alatt',
+    aiJudgment:'AI-ítélőképesség', fitStandard:'Fit-to-standard szemlélet', risk:'Kockázatkezelés', chaos:'Káosz-tűrés'};
+  return map[k]||k;
+}
+
+function computeAiStyle(){
+  const validated = S.flags['aiValidated']||0;
+  const blind = S.flags['aiBlind']||0;
+  if(validated>=2) return 'Tudatos AI-használó vagy: gyorsítasz vele, de mindig ellenőrzöd, amit mond.';
+  if(blind>=2) return 'Hajlamos vagy megbízni az AI gyors válaszaiban — érdemes tudatosabban validálni az outputot.';
+  return 'Kiegyensúlyozottan használod az AI-t: néhol támaszkodsz rá, néhol inkább magad jársz utána.';
+}
+
+/* ---------------------------------------------------------
+   8. LEADERBOARD
+--------------------------------------------------------- */
+function loadBoard(){
+  try{ return JSON.parse(localStorage.getItem(LS_BOARD)) || []; }catch(e){ return []; }
+}
+function saveBoard(board){ try{ localStorage.setItem(LS_BOARD, JSON.stringify(board)); }catch(e){} }
+function saveToLeaderboard(){
+  const board = loadBoard();
+  board.push({
+    nickname:S.nickname||'Névtelen tanácsadó',
+    score:S.result.score,
+    archetype:S.result.archetype.name,
+    career:S.result.career.name,
+    outcome:S.result.outcome.title,
+    timeMs:S.result.timeMs,
+    aiJudgment:S.skills.aiJudgment,
+    data:S.metrics.data,
+    date:new Date().toISOString(),
+  });
+  saveBoard(board);
+}
+
+/* ---------------------------------------------------------
+   9. RENDER HELPERS
+--------------------------------------------------------- */
+const app = document.getElementById('app');
+function metricColor(v){
+  if(v>=65) return 'var(--success)';
+  if(v>=40) return 'var(--warning)';
+  return 'var(--risk)';
+}
+function fmtTime(ms){
+  const s = Math.floor(ms/1000);
+  const m = Math.floor(s/60);
+  const r = s%60;
+  return `${m}:${r.toString().padStart(2,'0')}`;
+}
+
+function renderDashboardBar(){
+  return `
+  <div class="top-bar">
+    <div class="wrap" style="padding-top:14px;padding-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="pill">SAP S/4 GO-LIVE RESCUE</span>
+          <span style="font-size:.85rem;color:#9fb4c7;">${S.nickname? esc(S.nickname): ''}</span>
+        </div>
+        <div class="mission-progress" style="width:220px;">
+          ${MISSIONS.map((m,i)=>`<div class="mission-dot ${i<S.missionIndex?'done':(i===S.missionIndex?'current':'')}"></div>`).join('')}
+        </div>
+      </div>
+      <div class="grid-metrics scroll-x">
+        ${METRIC_DEFS.map(m=>`
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:.72rem;color:#c9d6e3;margin-bottom:3px;">
+              <span><span class="metric-icon">${m.icon}</span> ${m.label}</span>
+              <span aria-hidden="true">${S.metrics[m.key]}</span>
+            </div>
+            <div class="metric-bar" role="progressbar" aria-label="${m.label}" aria-valuenow="${S.metrics[m.key]}" aria-valuemin="0" aria-valuemax="100">
+              <div class="metric-fill" style="width:${S.metrics[m.key]}%;background:${metricColor(S.metrics[m.key])};"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function esc(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------------------------------------------------------
+   10. SCREENS
+--------------------------------------------------------- */
+function renderLanding(){
+  app.innerHTML = `
+  <div class="screen active fade-in">
+    <div class="wrap" style="min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:22px;">
+      <div class="pill">IFUA Horváth · Junior Karrierexpo</div>
+      <h1 style="font-size:clamp(2.2rem,6vw,3.6rem);line-height:1.05;">SAP S/4 GO-LIVE RESCUE</h1>
+      <p style="max-width:640px;font-size:1.15rem;color:#cfe4f0;">A Chaos Industries ERP-projektje veszélyben van.</p>
+      <p style="max-width:600px;color:#a9c1d3;">Öt kritikus döntés választ el a go-live-tól. Vajon megmented a projektet, vagy te szervezed a következő rendkívüli steering committee meetinget?</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
+        <button class="btn btn-primary" id="btn-start">Belépek az S/4 projektbe</button>
+        <button class="btn btn-secondary" id="btn-whatis">Mi az az SAP S/4HANA?</button>
+      </div>
+      <p style="font-size:.8rem;color:#7f97ab;margin-top:24px;">Kb. 5–8 perc · nincs szükség előzetes SAP-tudásra</p>
+    </div>
+  </div>`;
+  document.getElementById('btn-start').onclick = ()=>{ S.screen='nickname'; saveState(); render(); };
+  document.getElementById('btn-whatis').onclick = ()=>{ showModal(
+    'Mi az az SAP S/4HANA?',
+    `<p style="line-height:1.6;">Az <strong>SAP S/4HANA</strong> egy integrált vállalatirányítási rendszer, amely összekapcsolja például a pénzügy, a beszerzés, az értékesítés, a logisztika és a termelés folyamatait. Egy SAP-tanácsadó abban segít, hogy a rendszer valóban működjön az üzlet számára.</p>`
+  ); };
+}
+
+function renderNickname(){
+  app.innerHTML = `
+  <div class="screen active fade-in">
+    <div class="wrap" style="min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;">
+      <h2 style="font-size:1.8rem;">Kinek a nevében mented meg a projektet?</h2>
+      <p style="color:#a9c1d3;">Add meg a nicknevedet vagy a csapatod nevét a ranglistához.</p>
+      <input id="nick-input" maxlength="24" placeholder="pl. Adatdetektív_23" style="padding:14px 18px;border-radius:12px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:#fff;font-size:1.05rem;width:280px;max-width:80vw;text-align:center;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+        <button class="btn btn-primary" id="btn-nick-go">Tovább</button>
+        <button class="btn btn-ghost" id="btn-nick-skip">Kihagyom (Anonim tanácsadó)</button>
+      </div>
+    </div>
+  </div>`;
+  const input = document.getElementById('nick-input');
+  input.focus();
+  document.getElementById('btn-nick-go').onclick = ()=>{
+    S.nickname = input.value.trim() || 'Anonim tanácsadó';
+    S.screen='howto'; saveState(); render();
+  };
+  document.getElementById('btn-nick-skip').onclick = ()=>{
+    S.nickname = 'Anonim tanácsadó'; S.screen='howto'; saveState(); render();
+  };
+  input.addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('btn-nick-go').click(); });
+}
+
+function renderHowTo(){
+  app.innerHTML = `
+  <div class="screen active fade-in">
+    <div class="wrap" style="min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:20px;">
+      <div class="light-card" style="max-width:600px;">
+        <h2 style="color:var(--navy);margin-bottom:14px;">Így működik</h2>
+        <div style="display:grid;gap:12px;text-align:left;color:var(--navy);">
+          <p>🎯 <strong>5 küldetés</strong> vár rád a Chaos Industries SAP S/4HANA projektjében.</p>
+          <p>📊 Minden döntésed hatással van a projekt mutatóira — go-live készültség, bizalom, adatminőség és más.</p>
+          <p>🤖 Néhol AI-segítséget is kérhetsz — de a végső döntés mindig a tiéd.</p>
+          <p>🏆 A végén megtudod, milyen SAP-tanácsadó típus vagy, és felkerülsz a ranglistára.</p>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-howto-go">Kezdődjön a projekt!</button>
+    </div>
+  </div>`;
+  document.getElementById('btn-howto-go').onclick = ()=>{ S.screen='mission'; S.startTime=Date.now(); saveState(); render(); };
+}
+
+let selectedOptionIdx = null;
+let aiRevealed = {};
+
+function renderMission(){
+  const mission = MISSIONS[S.missionIndex];
+  selectedOptionIdx = null;
+  app.innerHTML = `
+    ${renderDashboardBar()}
+    <div class="wrap fade-in">
+      <div style="margin:18px 0 6px;">
+        <span class="pill">${esc(mission.tag)}</span>
+      </div>
+      <h2 style="font-size:1.7rem;margin-bottom:10px;">${esc(mission.title)}</h2>
+      <p style="color:#cfe4f0;line-height:1.6;max-width:760px;">${glossify(mission.scenario)}</p>
+
+      <div class="card" style="margin:18px 0;">
+        <div style="font-size:.75rem;color:#8fd6f5;font-weight:700;margin-bottom:6px;">${esc(mission.artifact.from)}</div>
+        <div style="font-style:${mission.artifact.type==='message'?'italic':'normal'};line-height:1.5;">${glossify(mission.artifact.text)}</div>
+      </div>
+
+      ${mission.aiAvailable? `
+      <div id="ai-panel-wrap" style="margin-bottom:18px;">
+        <button class="btn btn-ghost btn-sm" id="btn-ai">🤖 ${esc(mission.aiPrompt)}</button>
+        <div id="ai-output"></div>
+      </div>` : ''}
+
+      <h3 style="font-size:1.1rem;margin-bottom:12px;color:#8fd6f5;">Mit teszel?</h3>
+      <div style="display:grid;gap:12px;" id="options-list">
+        ${mission.options.map((opt,i)=>`
+          <button class="option-card" data-idx="${i}">
+            <div class="opt-title">${esc(opt.label)} ${opt.needsAI?'<span class="badge-ai">AI-alapú</span>':''}</div>
+            <div class="opt-desc">${esc(opt.desc)}</div>
+          </button>
+        `).join('')}
+      </div>
+
+      <div style="margin-top:22px;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary" id="btn-confirm" disabled style="opacity:.4;">Döntés megerősítése</button>
+      </div>
+    </div>
+  `;
+
+  if(mission.aiAvailable){
+    document.getElementById('btn-ai').onclick = ()=>{
+      const box = document.getElementById('ai-output');
+      box.innerHTML = `<div class="card fade-in pulse" style="margin-top:10px;">AI elemzés folyamatban…</div>`;
+      setTimeout(()=>{
+        const ai = mission.aiOutput;
+        box.innerHTML = `
+          <div class="card fade-in" style="margin-top:10px;border-color:rgba(0,140,200,.5);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span class="pill">🤖 AI kimenet</span>
+              <span style="font-size:.75rem;color:#c9d6e3;">Megbízhatóság: ${ai.confidence}%</span>
+            </div>
+            <p style="line-height:1.5;margin-bottom:8px;">${esc(ai.text)}</p>
+            <p style="line-height:1.5;color:var(--warning);font-size:.9rem;">⚠️ ${esc(ai.warning)}</p>
+          </div>`;
+      }, 700);
+    };
+  }
+
+  document.querySelectorAll('.option-card').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('.option-card').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedOptionIdx = parseInt(btn.dataset.idx,10);
+      const cbtn = document.getElementById('btn-confirm');
+      cbtn.disabled = false;
+      cbtn.style.opacity = '1';
+    };
+  });
+
+  document.getElementById('btn-confirm').onclick = ()=>{
+    if(selectedOptionIdx===null) return;
+    const opt = mission.options[selectedOptionIdx];
+    applyOption(mission, opt);
+    S.screen='feedback';
+    S._lastConsequence = opt.consequence;
+    S._lastLesson = mission.lesson;
+    saveState();
+    render();
+  };
+}
+
+function renderFeedback(){
+  app.innerHTML = `
+    ${renderDashboardBar()}
+    <div class="wrap fade-in" style="max-width:700px;">
+      <div class="card" style="margin-top:24px;">
+        <div class="pill" style="margin-bottom:10px;">Eredmény</div>
+        <p style="font-size:1.15rem;line-height:1.6;margin-bottom:18px;">${esc(S._lastConsequence)}</p>
+        <div style="border-top:1px solid rgba(255,255,255,.15);padding-top:14px;">
+          <div style="font-size:.78rem;color:#8fd6f5;font-weight:700;margin-bottom:4px;">TANULSÁG</div>
+          <p style="line-height:1.5;color:#cfe4f0;">${glossify(S._lastLesson)}</p>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+        <button class="btn btn-primary" id="btn-next">${S.missionIndex < MISSIONS.length-1 ? 'Következő küldetés' : 'Végső Steering Committee'}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('btn-next').onclick = ()=>{
+    S.missionIndex++;
+    if(S.missionIndex >= MISSIONS.length){
+      finalizeResult();
+      S.screen='result';
+    } else {
+      S.screen='mission';
+    }
+    saveState();
+    render();
+  };
+}
+
+function renderResult(){
+  const r = S.result;
+  app.innerHTML = `
+  <div class="screen active fade-in">
+    <div class="wrap" style="max-width:820px;">
+      <div style="text-align:center;margin:24px 0 18px;">
+        <div class="pill">Végső Steering Committee eredmény</div>
+      </div>
+      <div class="light-card" id="result-card">
+        <div style="text-align:center;">
+          <h2 style="color:var(--navy);font-size:1.5rem;">Milyen SAP-tanácsadó lennél?</h2>
+          <p style="color:var(--grey);margin-top:4px;">${esc(S.nickname)}</p>
+        </div>
+        <div style="display:flex;justify-content:center;gap:28px;margin:18px 0;flex-wrap:wrap;text-align:center;">
+          <div><div style="font-size:2.2rem;font-weight:800;color:var(--sap-blue);">${r.score}</div><div style="font-size:.8rem;color:var(--grey);">/ 1000 pont</div></div>
+          <div><div style="font-size:2.2rem;font-weight:800;color:${r.outcome.color};">${r.outcome.key==='green'?'🟢':r.outcome.key==='conditional'?'🟡':r.outcome.key==='postpone'?'🔵':r.outcome.key==='chaotic'?'🟠':'🔴'}</div><div style="font-size:.8rem;color:var(--grey);">${esc(r.outcome.title)}</div></div>
+          <div><div style="font-size:2.2rem;font-weight:800;color:var(--navy);">${fmtTime(r.timeMs)}</div><div style="font-size:.8rem;color:var(--grey);">teljesítési idő</div></div>
+        </div>
+        <p style="text-align:center;color:var(--navy);line-height:1.5;max-width:600px;margin:0 auto 18px;">${esc(r.outcome.desc)}</p>
+
+        <div style="background:var(--bg-light);border-radius:14px;padding:18px;margin-bottom:16px;">
+          <h3 style="color:var(--navy);font-size:1.2rem;">${esc(r.archetype.name)}</h3>
+          <p style="color:var(--sap-blue);font-style:italic;margin:6px 0;">„${esc(r.archetype.tagline)}”</p>
+          <p style="color:var(--navy);font-size:.92rem;line-height:1.5;">${esc(r.archetype.profile)}</p>
+          ${r.secondary? `<p style="color:var(--grey);font-size:.85rem;margin-top:8px;">Másodlagos erősséged: <strong>${esc(r.secondary.name)}</strong></p>`:''}
+        </div>
+
+        <div class="grid-metrics" style="margin-bottom:16px;">
+          ${METRIC_DEFS.map(m=>`
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--grey);margin-bottom:3px;">
+                <span>${m.icon} ${m.label}</span><span>${S.metrics[m.key]}</span>
+              </div>
+              <div class="metric-bar" style="background:#e3edf3;"><div class="metric-fill" style="width:${S.metrics[m.key]}%;background:${metricColor(S.metrics[m.key])};"></div></div>
+            </div>`).join('')}
+        </div>
+
+        <div style="background:var(--bg-light);border-radius:14px;padding:18px;margin-bottom:16px;">
+          <h4 style="color:var(--navy);margin-bottom:8px;">Ajánlott SAP karrierút: ${esc(r.career.name)}</h4>
+          <p style="color:var(--navy);font-size:.92rem;line-height:1.5;margin-bottom:6px;">${esc(r.career.text)}</p>
+          <p style="color:var(--grey);font-size:.85rem;">Tipikus feladat: ${esc(r.career.task)}</p>
+          <p style="color:var(--sap-blue);font-size:.85rem;margin-top:6px;">Neked való lehet, ha ${esc(r.career.fun)}</p>
+        </div>
+
+        <div style="display:flex;gap:20px;flex-wrap:wrap;color:var(--navy);font-size:.9rem;margin-bottom:10px;">
+          <div><strong>Erősségeid:</strong> ${r.strengths.map(esc).join(', ')}</div>
+        </div>
+        <div style="color:var(--navy);font-size:.9rem;margin-bottom:10px;"><strong>Fejlődési terület:</strong> ${esc(r.devArea)}</div>
+        <div style="color:var(--navy);font-size:.9rem;"><strong>AI munkastílusod:</strong> ${esc(r.aiStyle)}</div>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:24px 0;">
+        <button class="btn btn-primary" id="btn-copy">Eredmény másolása</button>
+        <button class="btn btn-secondary" id="btn-board">Ranglista</button>
+        <button class="btn btn-ghost" id="btn-replay">Újrajátszom</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('btn-copy').onclick = ()=>{
+    const txt = `Megmentettem a Chaos Industries SAP S/4HANA go-live-ját, és kiderült, hogy én lennék: ${r.archetype.name}. Eredményem: ${r.score}/1000.`;
+    navigator.clipboard?.writeText(txt).then(()=>{
+      flashMsg('Eredmény vágólapra másolva!');
+    }).catch(()=>{ flashMsg(txt); });
+  };
+  document.getElementById('btn-board').onclick = ()=>{ S.screen='leaderboard'; saveState(); render(); };
+  document.getElementById('btn-replay').onclick = confirmReplay;
+}
+
+function flashMsg(text){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.setAttribute('role','status');
+  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 20px;border-radius:12px;z-index:60;box-shadow:0 8px 20px rgba(0,0,0,.3);';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2400);
+}
+
+function renderLeaderboard(){
+  const board = loadBoard().slice().sort((a,b)=>b.score-a.score);
+  const top = board.slice(0,10);
+  const fastestGreen = board.filter(b=>b.outcome==='Sikeres SAP S/4HANA go-live').sort((a,b)=>a.timeMs-b.timeMs)[0];
+  const bestAI = board.slice().sort((a,b)=>b.aiJudgment-a.aiJudgment)[0];
+  const bestData = board.slice().sort((a,b)=>b.data-a.data)[0];
+
+  app.innerHTML = `
+  <div class="screen active fade-in">
+    <div class="wrap" style="max-width:800px;">
+      <h2 style="font-size:1.6rem;margin:20px 0 6px;">Karrierexpó ranglista</h2>
+      <p style="color:#a9c1d3;margin-bottom:16px;">A böngésződben tárolt eredmények (nem küldünk semmit szerverre).</p>
+      <div class="card scroll-x">
+        ${top.length? `
+        <table class="leaderboard-table">
+          <thead><tr><th>#</th><th>Név</th><th>Pontszám</th><th>Típus</th><th>Eredmény</th><th>Idő</th></tr></thead>
+          <tbody>
+            ${top.map((b,i)=>`<tr><td>${i+1}</td><td>${esc(b.nickname)}</td><td>${b.score}</td><td>${esc(b.archetype)}</td><td>${esc(b.outcome)}</td><td>${fmtTime(b.timeMs)}</td></tr>`).join('')}
+          </tbody>
+        </table>` : `<p style="color:#a9c1d3;">Még nincs mentett eredmény.</p>`}
+      </div>
+      <div class="chip-row" style="margin-top:16px;">
+        ${fastestGreen? `<span class="pill">⚡ Leggyorsabb sikeres go-live: ${esc(fastestGreen.nickname)} (${fmtTime(fastestGreen.timeMs)})</span>`:''}
+        ${bestAI? `<span class="pill">🤖 Legjobb AI-ítélőképesség: ${esc(bestAI.nickname)}</span>`:''}
+        ${bestData? `<span class="pill">🗂️ Legjobb adatminőség: ${esc(bestData.nickname)}</span>`:''}
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:26px 0;">
+        <button class="btn btn-primary" id="btn-back">Vissza az eredményhez</button>
+        <button class="btn btn-ghost" id="btn-replay2">Újrajátszom</button>
+        <button class="btn btn-ghost btn-sm" id="btn-reset" style="opacity:.6;">Ranglista törlése (standosnak)</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('btn-back').onclick = ()=>{ S.screen='result'; saveState(); render(); };
+  document.getElementById('btn-replay2').onclick = confirmReplay;
+  document.getElementById('btn-reset').onclick = ()=>{
+    if(confirm('Biztosan törlöd a teljes ranglistát? Ez nem visszavonható.')){
+      saveBoard([]);
+      render();
+    }
+  };
+}
+
+function confirmReplay(){
+  if(confirm('Biztosan új projektet indítasz? A jelenlegi eredményed elvész (a ranglistán marad).')){
+    clearState();
+    S = freshState();
+    render();
+  }
+}
+
+/* ---------------------------------------------------------
+   11. MODAL / RESUME PROMPT
+--------------------------------------------------------- */
+function showModal(title, html){
+  const overlay = document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.innerHTML = `<div class="light-card modal-box" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <h3 style="color:var(--navy);margin-bottom:14px;">${esc(title)}</h3>
+    <div style="color:var(--navy);">${html}</div>
+    <div style="text-align:right;margin-top:18px;"><button class="btn btn-primary btn-sm" id="modal-close">Bezárás</button></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('modal-close').onclick = ()=>overlay.remove();
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+
+function maybeShowResume(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(!raw) return false;
+  try{
+    const saved = JSON.parse(raw);
+    if(saved && saved.screen && saved.screen!=='landing' && !saved.completed){
+      const overlay = document.createElement('div');
+      overlay.className='modal-overlay';
+      overlay.innerHTML = `<div class="light-card modal-box" role="dialog" aria-modal="true">
+        <h3 style="color:var(--navy);margin-bottom:10px;">Folytatod a korábbi projektet?</h3>
+        <p style="color:var(--navy);margin-bottom:18px;">Találtunk egy mentett SAP S/4HANA projektet: <strong>${esc(saved.nickname||'Névtelen tanácsadó')}</strong>.</p>
+        <div style="display:flex;gap:12px;justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" id="resume-new">Új projektet indítok</button>
+          <button class="btn btn-primary btn-sm" id="resume-continue">Folytatom a projektet</button>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+      document.getElementById('resume-continue').onclick = ()=>{ S = saved; overlay.remove(); render(); };
+      document.getElementById('resume-new').onclick = ()=>{ clearState(); S = freshState(); overlay.remove(); render(); };
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+/* ---------------------------------------------------------
+   12. MAIN RENDER SWITCH
+--------------------------------------------------------- */
+function render(){
+  switch(S.screen){
+    case 'landing': renderLanding(); break;
+    case 'nickname': renderNickname(); break;
+    case 'howto': renderHowTo(); break;
+    case 'mission': renderMission(); break;
+    case 'feedback': renderFeedback(); break;
+    case 'result': if(!S.result) finalizeResult(); renderResult(); break;
+    case 'leaderboard': renderLeaderboard(); break;
+    default: renderLanding();
+  }
+}
+
+if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  document.documentElement.classList.add('reduced-motion');
+}
+
+// Initial boot: if there's a resumable session, ask; otherwise render current state.
+if(!maybeShowResume()){
+  render();
+}
+</script>
+</body>
+</html>
